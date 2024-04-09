@@ -1,5 +1,5 @@
 // The Dungeon Master's Playbook, the only software to contain the whole journey. 
-// Last Update: 4/2/24 - Skye Smith
+// Last Update: 4/9/24 - Skye Smith
 
 
 // Include Statements 
@@ -16,19 +16,19 @@
 // Fucntion Declarations 
 void RollTheDice();
 std::string NameGenerator();
-std::string SelectMemoryLocation(std::vector <std::string> FN);
+std::string SelectMemoryLocation(std::vector <std::string> & FN);
 void PrintCharacters(std::vector <Character> CL);
 void ReadFile(std::vector <Character>* CLP);
 void CreateACharacter();
-//void RemoveACharacter(std::vector <Character> CL);
+void RemoveACharacter(std::vector <Character>& CL);
+void NoteTaker();
 
 
 // TO DO LIST:
 // -----------
 // MakeANote()
 // Statblock editor 
-// List of Characters - to see and edit. 
-// Write to a file for memory
+//
 
 
 
@@ -39,21 +39,18 @@ int main()
 	std::vector <std::string> FileNames;
 	std::vector <Character> CharacterList;
 	std::vector <Character>* CLPointer = &CharacterList; 
-	std::string FileName = "CharactersList.txt";
 	
-
-
-	// Tester Variables
-	FileNames.push_back("Test1"); 
-	FileNames.push_back("Test2");
-
-	//CreateACharacter();
-	// Function Calls
-	//test.CreateACharacter(); 
+	// Mandatory Function Calls 
 	ReadFile(CLPointer);
+	FileNames.push_back("CharactersList.txt");
+	FileNames.push_back("Notes.txt");
+
+	
+	// Function Calls 
+	//CreateACharacter();
 	//RemoveACharacter(CharacterList);
-	PrintCharacters(CharacterList);
-	//test.EditCharacter();
+	//PrintCharacters(CharacterList);
+	NoteTaker();
 	//RollTheDice();
 	//NameGenerator();
 	//SelectMemoryLocation(FileNames);
@@ -242,40 +239,6 @@ std::string NameGenerator()
 	return name;
 }
 
-std::string SelectMemoryLocation(std::vector <std::string> FN)
-{
-	// Variables 
-	int FNsize = FN.size();
-	int option = 0;
-	std::ifstream Input;
-	std::ofstream output;
-	std::string editNote = "";
-
-	// Prompt for location
-	std::cout << "Where would you like to store this information?" << std::endl;
-	for (int i = 0; i < FNsize; ++i)
-	{
-		std::cout << i + 1 << ") " << FN[i] << std::endl;
-	}
-	std::cout << FNsize + 1 << ") New Location" << std::endl;
-
-	// Read in value of location
-	std::cin >> option;
-
-	// Open File
-	Input.open(FN[option]);
-
-	// Prompt for edit or new 
-	std::cout << "Would you like to edit a previous note in " << FN[option] << " or add a new one?" << std::endl;
-	std::cin >> editNote;
-
-
-
-
-
-	return "";
-}
-
 void PrintCharacters(std::vector <Character> CL)
 {
 	for (auto i : CL)
@@ -341,6 +304,8 @@ void ReadFile(std::vector <Character> * CLP)
 		Tokens.clear();
 
 	}
+
+	input.close();
 }
 
 void CreateACharacter()
@@ -349,75 +314,171 @@ void CreateACharacter()
 	Temp.CreateACharacter();
 }
 
-//void RemoveACharacter(std::vector <Character> CL)
+void RemoveACharacter(std::vector <Character> & CL)
+{
+	// Variables 
+	std::ifstream in;
+	in.open("CharactersList.txt");
+	std::string ReadInLine;
+	std::string delemiter = ",";
+	std::vector <std::string> Tokens;
+	int choice = 0;
+	std::string toBeDeletedName;
+	std::ofstream out;
+	int count = 0;
+
+	// Removes from File
+	{
+		// Prompt for Name of Character to be deleted 
+		std::cout << "Which character would you like to remove?" << std::endl;
+		for (int i = 0; i < CL.size(); ++i)
+		{
+			std::cout << i + 1 << ") " << CL[i].getName() << std::endl;
+		}
+		std::cin >> choice;
+
+		// Error Checking
+		while (choice < 1 || choice > CL.size())
+		{
+			std::cout << "That is not a vaild input. Acceptable inputs include numbers 1 - " << CL.size() << ". Please try again." << std::endl;
+			std::cin.clear();
+			std::cin >> choice;
+		}
+		toBeDeletedName = CL[choice - 1].getName();
+
+		//Read in and tokenize the file
+		while (in.good())
+		{
+			// Read in details 
+			std::getline(in, ReadInLine);
+
+			// Seperate the details
+			int end = ReadInLine.find(delemiter);
+			while (end != -1)
+			{
+				Tokens.push_back(ReadInLine.substr(0, end));
+				ReadInLine.erase(ReadInLine.begin(), ReadInLine.begin() + end + 1);
+				end = ReadInLine.find(delemiter);
+
+			}
+		}
+
+		//Close the file
+		in.close();
+
+		// Open the file again for output.
+		out.open("CharactersList.txt");
+		//Search through the file contents and find the name
+		for (int i = 0; i < Tokens.size(); ++i)
+		{
+			if (Tokens[i] == toBeDeletedName)
+			{
+				i += 15;
+			}
+			else
+			{
+				if (count < 16)
+				{
+					out << Tokens[i] + ",";
+					++count;
+				}
+				else
+				{
+					count = 0;
+					out << std::endl << Tokens[i] + ",";
+
+				}
+			}
+		}
+
+
+	}
+
+	//Removes from Vector
+	{
+		for (int i = 0; i < CL.size(); ++i)
+		{
+			if (CL[i].getName() == toBeDeletedName)
+			{
+				CL.erase(CL.begin() + i);
+			}
+		}
+	}
+
+	out.close();
+
+}
+
+void NoteTaker()
+{
+
+	//Variables 
+	int option = 0;
+	std::ofstream out;
+	std::string delim = "|";
+	std::string line = "";
+	std::string NoteToBeAdded;
+
+
+	// Promp for New or Edit Previous
+	std::cout << "Would you like to make a new note or edit a previous note?" << std::endl;
+	std::cout << " 1) Make a new note \n 2) Edit a previous note" << std::endl;
+
+	std::cin >> option;
+
+	//Error Checking
+
+	// New 
+	if (option == 1)
+	{
+		while(line.find(delim)==-1)
+		{
+			out.open("Notes.txt", std::ios::out | std::ios::app);
+			std::cout << "Please enter the text you would like to add into the note. When finshed, type a \"|\"" << std::endl;
+			
+			NoteToBeAdded += line;
+		}
+	}
+	// Edit Previous 
+	else
+	{
+
+	}
+
+	//Close File
+
+}
+
+//std::string SelectMemoryLocation(std::vector <std::string> & FN)
 //{
-//	// Variables
-//	int choice = 0;
-//	std::string temp;
-//	std::vector <std::string> temp2;
-//	std::ifstream input;
-//	input.open("CharactersList.txt");
-//	std::string ReadInLine;
-//	std::string delemiter = ",";
-//	std::string toBeDeletedName;
+//	// Variables 
+//	int FNsize = FN.size();
+//	int option = 0;
+//	std::ifstream Input;
 //	std::ofstream output;
-//	int count = 0;
+//	std::string editNote = "";
 //
-//	std::cout << "Which character would you like to remove?" << std::endl;
-//	for (int i = 0; i < CL.size(); ++i)
+//	// Prompt for location
+//	std::cout << "Where would you like to store this information?" << std::endl;
+//	for (int i = 0; i < FNsize; ++i)
 //	{
-//		std::cout << i + 1 << ") " << CL[i].getName() << std::endl;
+//		std::cout << i + 1 << ") " << FN[i] << std::endl;
 //	}
-//	std::cin >> choice;
+//	std::cout << FNsize + 1 << ") New Location" << std::endl;
 //
-//	while (choice < 1 || choice > CL.size())
-//	{
-//		std::cout << "That is not a vaild input. Acceptable inputs include numbers 1 - " << CL.size() << ". Please try again." << std::endl;
-//		std::cin.clear();
-//		std::cin >> choice;
-//	}
+//	// Read in value of location
+//	std::cin >> option;
 //
-//	toBeDeletedName = CL[choice - 1].getName();
+//	// Open File
+//	Input.open(FN[option]);
 //
-//	while (input.good())
-//	{
-//		// Read in details 
-//		std::getline(input, ReadInLine);
-//		temp = temp + ReadInLine;
-//
-//		// Seperate the details
-//		int end = ReadInLine.find(delemiter);
-//		while (end != -1)
-//		{
-//			temp2.push_back(ReadInLine.substr(0, end));
-//			ReadInLine.erase(ReadInLine.begin(), ReadInLine.begin() + end + 1);
-//			end = ReadInLine.find(delemiter);
-//
-//		}
-//	}
+//	// Prompt for edit or new 
+//	std::cout << "Would you like to edit a previous note in " << FN[option] << " or add a new one?" << std::endl;
+//	std::cin >> editNote;
 //
 //
-//	for (int i = 0; i < CL.size(); ++i)
-//	{
-//		if (CL[choice - 1].getName() == temp2[i])
-//		{
 //
-//		}
-//		else
-//		{
-//			if (count < 16)
-//			{
-//				output << temp2[i] << ",";
-//				++count;
-//			}
-//			else
-//			{
-//				output << std::endl << temp2[i] << ",";
-//			}
-//			
-//		}
-//		
-//	}
+//
+//
+//	return "";
 //}
-
-
